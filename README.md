@@ -7,7 +7,7 @@
 AreaClaims lets players and server owners define block-precise, freely-shaped **polygon** land
 claims — not just simple rectangles. A main claim can contain any number of independent
 sub-claims, each with its own name, entry title, member roles, and deny-rules. Standalone NeoForge
-mod, **no Cobblemon dependency**, works in any NeoForge modpack.
+mod, works in any NeoForge modpack.
 
 ### Features
 
@@ -52,8 +52,7 @@ yourself.
 
 ### Other CobbleCompanion-family projects
 
-AreaClaims isn't part of the CobbleCompanion family (no Cobblemon dependency, works in any
-NeoForge modpack), but it's made by the same author:
+AreaClaims isn't part of the CobbleCompanion family, but it's made by the same author:
 
 - [CobbleCompanion](https://github.com/siralusian/CobbleCompanion) and its extensions/bundles
 - [MobTweaks](https://github.com/siralusian/MobTweaks) — granular per-ability mob/NPC behavior
@@ -74,8 +73,8 @@ NeoForge modpack), but it's made by the same author:
 AreaClaims erlaubt Spielern und Server-Betreibern, blockgenaue, **frei geformte Polygon**-
 Gebietsansprüche zu definieren — nicht nur einfache Rechtecke. Ein Hauptbereich kann beliebig
 viele unabhängige Unterbereiche enthalten, jeder mit eigenem Namen, Betreten-Titel,
-Mitgliederrollen und Verbieten-Regeln. Eigenständige NeoForge-Mod, **keine Cobblemon-
-Abhängigkeit**, funktioniert in jedem NeoForge-Modpack.
+Mitgliederrollen und Verbieten-Regeln. Eigenständige NeoForge-Mod, funktioniert in jedem
+NeoForge-Modpack.
 
 ### Funktionen
 
