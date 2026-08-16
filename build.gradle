@@ -1,0 +1,181 @@
+plugins {
+    id 'java-library'
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.neoforged.moddev' version '2.0.78'
+    id 'com.modrinth.minotaur' version '2.+'
+    id 'net.darkhax.curseforgegradle' version '1.1.+'
+}
+
+version = mod_version
+group = mod_group_id
+
+repositories {
+    mavenCentral()
+}
+
+base {
+    archivesName = mod_id
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    withSourcesJar()
+}
+
+dependencies {
+    // CobbleCompanion: rein optionale Laufzeit-Brücke (CobbleDollars-Preis-Option, siehe
+    // com.areaclaims.integration.CobbleCompanionBridge) - NUR compileOnly, NIEMALS implementation,
+    // AreaClaims muss auch OHNE CobbleCompanion vollständig funktionieren (Item-Preis-Option bleibt
+    // dann die einzige verfügbare, siehe ROADMAP.md Phase 6). Jar manuell gebaut und hier in libs/
+    // abgelegt (nicht mitgebündelt, siehe neoforge.mods.toml - dependency type "optional"). Exakt
+    // dasselbe Muster wie InvSpy/build.gradle (dortige CobbleCompanion-Brücke).
+    compileOnly fileTree(dir: 'libs', include: ['CobbleCompanion*.jar'])
+
+    // Cobblemon: ebenfalls rein optionale Laufzeit-Brücke (PREVENT_COBBLEMON_CAPTURE-Durchsetzung,
+    // siehe com.areaclaims.integration.CobblemonBridge, ROADMAP.md Phase 6-Nachtrag 2) - NUR
+    // compileOnly, NIEMALS implementation, exakt dasselbe Muster wie CobbleCompanion oben. Kotlin-
+    // stdlib zusätzlich nötig, da Cobblemons Event-API (Observable/CancelableObservable) Kotlin-
+    // Klassen im Methodensignatur-Raum referenziert - reiner Kompilierzeit-Bedarf, wird zur
+    // Laufzeit transitiv von Cobblemon selbst mitgebracht (siehe neoforge.mods.toml).
+    compileOnly fileTree(dir: 'libs', include: ['Cobblemon*.jar'])
+    compileOnly 'org.jetbrains.kotlin:kotlin-stdlib:2.0.21'
+
+    // JourneyMap: rein optionale Laufzeit-Brücke (Claim-Grenzen als Karten-Overlay, siehe
+    // com.areaclaims.integration.JourneyMapBridge) - NUR compileOnly, NIEMALS implementation, exakt
+    // dasselbe Muster wie CobbleCompanion/Cobblemon oben. Die schlanke journeymap-api-Datei (statt
+    // des vollen JourneyMap-Mod-Jars) liegt jarJar-gebündelt IN JourneyMaps eigenem Mod-Jar unter
+    // META-INF/jarjar/ - von dort extrahiert und hier in libs/ abgelegt, enthält NUR die öffentlichen
+    // journeymap.api.v2.*-Schnittstellen, keinen Implementierungscode.
+    compileOnly fileTree(dir: 'libs', include: ['journeymap-api*.jar'])
+}
+
+neoForge {
+    version = neo_version
+
+    parchment {
+        mappingsVersion = "2024.11.17"
+        minecraftVersion = "1.21.1"
+    }
+
+    runs {
+        client {
+            client()
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+        }
+        server {
+            server()
+            programArgument '--nogui'
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+        }
+        gameTestServer {
+            type = "gameTestServer"
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+        }
+        data {
+            data()
+            programArguments.addAll '--mod', mod_id, '--all',
+                '--output', file('src/generated/resources/').getAbsolutePath(),
+                '--existing', file('src/main/resources/').getAbsolutePath()
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+processResources {
+    var replaceProperties = [
+        minecraft_version      : minecraft_version,
+        minecraft_version_range: minecraft_version_range,
+        neo_version            : neo_version,
+        neo_version_range      : neo_version_range,
+        loader_version_range   : loader_version_range,
+        mod_id                 : mod_id,
+        mod_name               : mod_name,
+        mod_license            : mod_license,
+        mod_version            : mod_version,
+        mod_authors            : mod_authors,
+        mod_description        : mod_description
+    ]
+    inputs.properties replaceProperties
+    filesMatching(['META-INF/neoforge.mods.toml']) {
+        expand replaceProperties
+    }
+}
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            url "file://${project.projectDir}/repo"
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+// Modrinth/CurseForge-Upload (Nutzer-Vorgabe: Tokens NIEMALS im Repo, ausschliesslich aus den
+// lokalen Umgebungsvariablen MODRINTH_TOKEN/CURSEFORGE_TOKEN gelesen - fehlen sie, brechen die
+// beiden Tasks unten kontrolliert ab statt mit leerem Token einen Request zu schicken. Aufruf
+// bewusst manuell (./gradlew modrinth / ./gradlew publishCurseForge), kein automatischer Trigger
+// an build/publish gekoppelt. modrinth_id/curseforge_id sind in gradle.properties noch leer, bis
+// die Projekte dort angelegt wurden - die Tasks bleiben strukturell vorhanden, sind aber harmlos,
+// solange sie nicht manuell aufgerufen werden.
+// Solange modrinth_id/curseforge_id leer sind (vor der Erstveroeffentlichung), werden die beiden
+// Publish-Tasks gar nicht erst registriert - mit leerer projectId/curseforge_id wuerden Modrinth-
+// Minotaur bzw. CurseForgeGradle schon bei der Projekt-Konfiguration (nicht erst beim Task-Aufruf)
+// mit einer NumberFormatException abbrechen und damit JEDEN Gradle-Sync (auch RunClient in der IDE)
+// verhindern - live so aufgetreten, siehe Git-Historie.
+if (modrinth_id) {
+    modrinth {
+        token = providers.environmentVariable('MODRINTH_TOKEN')
+        projectId = modrinth_id
+        versionNumber = mod_version
+        versionType = "release"
+        uploadFile = tasks.named('jar')
+        gameVersions = [minecraft_version]
+        loaders = ["neoforge"]
+        changelog = file("$rootDir/CHANGELOG.md").text
+        syncBodyFrom = file("$rootDir/README.md").text
+    }
+}
+
+if (curseforge_id) {
+    tasks.register('publishCurseForge', net.darkhax.curseforgegradle.TaskPublishCurseForge) {
+        apiToken = providers.environmentVariable('CURSEFORGE_TOKEN').getOrElse('')
+        disableVersionDetection()
+
+        def mainFile = upload(curseforge_id, tasks.named('jar'))
+        mainFile.changelog = file("$rootDir/CHANGELOG.md").text
+        mainFile.changelogType = 'markdown'
+        mainFile.releaseType = 'release'
+        mainFile.addModLoader('NeoForge')
+        mainFile.addGameVersion(minecraft_version)
+        // CurseForge verlangt zusaetzlich zu Spielversion/Loader mindestens ein "Environment"-Tag aus
+        // der Gruppe Client/Server ("Both" ist selbst kein gueltiger Wert, siehe Live-Fund bei
+        // CobbleCompanion) - beide einzeln gesetzt.
+        mainFile.addEnvironment('Client')
+        mainFile.addEnvironment('Server')
+        mainFile.displayName = "${mod_name} ${mod_version}"
+    }
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}

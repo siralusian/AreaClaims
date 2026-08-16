@@ -1,0 +1,74 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="MIT"
+
+[[dependencies.areaclaims]]
+    modId="neoforge"
+    type="required"
+    versionRange="[21.1.233,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.areaclaims]]
+    modId="minecraft"
+    type="required"
+    versionRange="[1.21.1,1.22)"
+    ordering="NONE"
+    side="BOTH"
+
+# Rein optionale Brücke (CobbleDollars-Preis-Option, siehe com.areaclaims.integration) - AreaClaims
+# läuft vollständig ohne CobbleCompanion (Item-Preis-Option bleibt dann die einzige verfügbare),
+# siehe ROADMAP.md Phase 6. Exakt dasselbe Muster wie InvSpy.
+[[dependencies.areaclaims]]
+    modId="cobblecompanion"
+    type="optional"
+    versionRange="[0.1.0,)"
+    ordering="AFTER"
+    side="BOTH"
+
+# "cobblecompanion_everything" ist die interne Alles-in-einer-Datei-Testvariante für den eigenen
+# Server (enthält denselben com.cobblecompanion.api.*-Code unter anderer Mod-ID) - separater
+# optionaler Eintrag, damit die Ladereihenfolge auch dort stimmt, siehe ModAvailability.
+[[dependencies.areaclaims]]
+    modId="cobblecompanion_everything"
+    type="optional"
+    versionRange="[0.1.0,)"
+    ordering="AFTER"
+    side="BOTH"
+
+# Rein optionale Brücke (PREVENT_COBBLEMON_CAPTURE-Durchsetzung, siehe
+# com.areaclaims.integration.CobblemonBridge) - AreaClaims läuft vollständig ohne Cobblemon
+# (die Regel existiert dann weiter im Datenmodell/UI, greift nur nirgends), siehe ROADMAP.md
+# Phase 6-Nachtrag 2.
+[[dependencies.areaclaims]]
+    modId="cobblemon"
+    type="optional"
+    versionRange="[1.7.3,)"
+    ordering="AFTER"
+    side="BOTH"
+
+# Rein optionale Brücke (Claim-Grenzen als JourneyMap-Karten-Overlay, siehe
+# com.areaclaims.integration.JourneyMapBridge) - AreaClaims läuft vollständig ohne JourneyMap, die
+# Overlays werden dann schlicht nie erzeugt. "ordering=AFTER" wichtig, damit unser
+# @JourneyMapPlugin-annotierter Server-Plugin-Handler erst geladen wird, nachdem JourneyMap selbst
+# vollständig initialisiert ist und mit dem Scannen nach Plugins beginnen kann.
+#
+# Live-Fund (Boot-Test 2026-08-16): JourneyMaps echter Versionsstring ist "1.21.1-6.0.0-beta.81"
+# (MC-Version vorangestellt, keine reine SemVer-Zahl) - eine versionRange wie "[6.0.0,)" lässt
+# NeoForges Versionsvergleich diesen String als "kleiner als 6.0.0" einstufen (alles ab dem ersten
+# "-" zählt als Vorabversions-Qualifier) und bricht den KOMPLETTEN Serverstart mit einer harten
+# Mod-Loading-Crash ab, sobald JourneyMap installiert ist. WICHTIG: eine explizit LEERE
+# versionRange="" reicht NICHT (per Boot-Test verifiziert - crasht identisch weiter, NeoForge
+# behandelt das offenbar NICHT als "jede Version erlaubt") - der Schlüssel muss GANZ FEHLEN, nur
+# dann wertet NeoForge die Abhängigkeit ohne jede Versionsprüfung aus.
+[[dependencies.areaclaims]]
+    modId="journeymap"
+    type="optional"
+    ordering="AFTER"
+    side="BOTH"
+
+[[mods]]
+    modId="areaclaims"
+    version="0.1.0"
+    displayName="AreaClaims"
+    description="Blockgenaue, frei geformte Gebietsansprueche mit Unterbereichen, Betreten-Nachrichten und Mitgliederrollen."
