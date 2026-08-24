@@ -46,6 +46,11 @@ public class ServerConfigSnapshot {
     /** Punkt 12 (Nachtrag 3): "X pro N Blöcke"-Teiler, siehe {@code com.areaclaims.economy.PriceCharger#chargeUnits}. */
     public int perBlockPriceDivisor = 1;
     public int subClaimPriceDivisor = 1;
+    /** Nutzer-Vorgabe (2026-08-18, "Erweitern per Ziehen"): Rückerstattung pro verkleinertem Block - siehe {@code com.areaclaims.economy.PriceCharger#refundUnits} (rundet ab, anders als der Kauf-Preis). */
+    public PriceEntry perBlockRefund;
+    public PriceEntry subClaimRefund;
+    public int perBlockRefundDivisor = 1;
+    public int subClaimRefundDivisor = 1;
     /** Punkt 1 (Nachtrag 4): admin-konfigurierbare "Wildnis"-Austritts-Meldung. */
     public boolean wildernessMessageEnabled;
     public String wildernessMessageText = "";

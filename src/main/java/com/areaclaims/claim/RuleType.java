@@ -18,7 +18,12 @@ import java.util.Locale;
  *   <li>CONTAINER_ITEM_TRANSFER - NICHT verdrahtet (TODO, siehe ROADMAP.md - bräuchte einen Hook
  *       auf einzelne Slot-Klicks/ContainerClickPacket, kein sauberes NeoForge-Event gefunden)</li>
  *   <li>PVP - verifiziert verdrahtet (AttackEntityEvent)</li>
- *   <li>MOB_SPAWNING - verifiziert verdrahtet (FinalizeSpawnEvent#setSpawnCancelled)</li>
+ *   <li>MOB_SPAWNING ("Feindliche Mobs", 2026-08-18 umbenannt/eingeschränkt) - verifiziert
+*       verdrahtet: blockt NEUES Spawnen ausschließlich für {@code MobCategory.MONSTER}
+*       (FinalizeSpawnEvent#setSpawnCancelled), friedliche/neutrale Mobs unberührt. Zusätzlich
+*       drängt ein periodischer Scan bereits VORHANDENE feindliche Mobs, die von außen in den
+*       Claim hineinlaufen, wieder nach draußen (siehe ClaimProtectionListener#
+*       onServerTickPushHostileMobs/#pushHostileMobOutside).</li>
  *   <li>REDSTONE_INTERACT - TEILWEISE verdrahtet: Hebel/Knöpfe über RightClickBlock abgedeckt,
  *       Druckplatten NICHT (TODO - die werden über Entity-Bewegung ausgelöst, kein
  *       Interact-Event; bräuchte vermutlich einen Mixin)</li>

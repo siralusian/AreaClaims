@@ -25,10 +25,27 @@ import java.util.UUID;
  */
 public final class PendingActionManager {
 
+    /**
+     * @param resizedParts NUR bei einer "Anpassen"-Aktion (2026-08-18, block-weises Umschalten,
+     *     siehe {@code ClaimAdjustManager}) gesetzt - die fertige NEUE Gesamt-Geometrie des Claims
+     *     (siehe {@code ClaimManager#applyResize}), statt eines einzelnen neuen Teils. {@code null}
+     *     für alle anderen Aktionen - dieses Feld ist der Unterscheider zwischen "normale Punkte-
+     *     Auswahl" und "Anpassen-Ergebnis", NICHT ein eigener {@code ActionType}-Verzweigungspfad in
+     *     {@code StakingService#confirmPending}.
+     * @param toggledColumns NUR bei {@code resizedParts != null} - die rohen umgeschalteten Spalten
+     *     (siehe {@code ClaimAdjustManager}), damit {@code StakingService#resumePending} den exakten
+     *     Anpassen-Zustand wiederherstellen kann (nicht nur die fertige Geometrie).
+     * @param addedBlocks/@param removedBlocks nur bei {@code resizedParts != null} relevant - beide
+     *     GLEICHZEITIG möglich (eine Anpassen-Sitzung kann sowohl hinzufügen als auch entfernen).
+     */
     public record PendingAction(
         ActiveSelectionManager.ActionType action,
         UUID targetClaimId,
-        List<Vertex> points
+        List<Vertex> points,
+        List<List<Vertex>> resizedParts,
+        List<int[]> toggledColumns,
+        int addedBlocks,
+        int removedBlocks
     ) {}
 
     private static final Map<UUID, PendingAction> PENDING = new HashMap<>();
@@ -36,7 +53,13 @@ public final class PendingActionManager {
     private PendingActionManager() {}
 
     public static void remember(UUID player, ActiveSelectionManager.ActionType action, UUID targetClaimId, List<Vertex> points) {
-        PENDING.put(player, new PendingAction(action, targetClaimId, points));
+        PENDING.put(player, new PendingAction(action, targetClaimId, points, null, List.of(), 0, 0));
+    }
+
+    /** Wie {@link #remember}, aber für ein "Anpassen"-Ergebnis (siehe {@link PendingAction#resizedParts}-Klassenkommentar). */
+    public static void rememberAdjust(UUID player, ActiveSelectionManager.ActionType action, UUID targetClaimId,
+            List<List<Vertex>> resizedParts, List<int[]> toggledColumns, int addedBlocks, int removedBlocks) {
+        PENDING.put(player, new PendingAction(action, targetClaimId, List.of(), resizedParts, toggledColumns, addedBlocks, removedBlocks));
     }
 
     /** @return die gemerkte Aktion NUR, wenn sie zu genau dieser Aktion+Ziel passt - sonst {@code null}. */

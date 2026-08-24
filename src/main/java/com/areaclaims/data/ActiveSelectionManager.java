@@ -18,7 +18,14 @@ import java.util.UUID;
  */
 public final class ActiveSelectionManager {
 
-    public enum ActionType { NEW_CLAIM, EXPAND_MAIN, EXPAND_SUB, NEW_SUBCLAIM }
+    /**
+     * {@code ADJUST_MAIN}/{@code ADJUST_SUB} (2026-08-18, "Anpassen"-Button): eigener Modus NEBEN
+     * {@code EXPAND_MAIN}/{@code EXPAND_SUB} - dort bleibt reines Klick-für-Klick (unabhängige neue
+     * Teile), hier wird stattdessen block-weise "gehört zum Claim"/"gehört nicht dazu" umgeschaltet
+     * (siehe {@link com.areaclaims.data.ClaimAdjustManager}) - ersetzt den vorherigen, per Nutzer-
+     * Feedback verworfenen Gedrückt-Halten-Ziehversuch an der Grenze.
+     */
+    public enum ActionType { NEW_CLAIM, EXPAND_MAIN, EXPAND_SUB, NEW_SUBCLAIM, ADJUST_MAIN, ADJUST_SUB }
 
     /**
      * @param targetClaimId bei EXPAND_MAIN/EXPAND_SUB der zu erweiternde Claim; bei NEW_SUBCLAIM

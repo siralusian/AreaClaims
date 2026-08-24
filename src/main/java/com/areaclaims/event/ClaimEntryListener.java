@@ -78,16 +78,16 @@ public class ClaimEntryListener {
      * Klassenkommentare.
      */
     /**
-     * JourneyMap-Integration (2026-08-16): ein frisch verbundener Client hat noch KEINE Overlays -
-     * die laufenden {@link com.areaclaims.claim.ClaimManager#save}-Pushes erreichen nur bereits
-     * verbundene Spieler. Push hier einmalig alle aktuell existierenden Claims gezielt an DIESEN
-     * einen Spieler nach (siehe {@code JourneyMapBridge#pushAllTo}).
+     * JourneyMap-Integration (2026-08-16, Architektur 2026-08-17 umgebaut - siehe
+     * com.areaclaims.network.ClaimMapSnapshot-Klassenkommentar): ein frisch verbundener Client hat
+     * noch KEINEN Claim-Kartenstand - die laufenden {@link com.areaclaims.claim.ClaimManager#save}-
+     * Broadcasts erreichen nur bereits verbundene Spieler. Schickt hier einmalig den aktuellen
+     * Stand gezielt an DIESEN einen Spieler nach.
      */
     @SubscribeEvent
     public void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
-        if (com.areaclaims.integration.ModAvailability.isJourneyMapAvailable()
-            && event.getEntity() instanceof ServerPlayer player) {
-            com.areaclaims.integration.JourneyMapBridge.pushAllTo(player);
+        if (event.getEntity() instanceof ServerPlayer player) {
+            com.areaclaims.network.ClaimMapSnapshotBuilder.sendTo(player);
         }
     }
 

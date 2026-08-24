@@ -55,21 +55,19 @@ public final class AdminConfigService {
     }
 
     /**
-     * JourneyMap-Integration (2026-08-16) an/aus. Löst sofort einen Refresh bei allen Online-
-     * Spielern aus, statt auf die nächste Claim-Änderung zu warten - beim Abschalten sorgt
-     * {@link com.areaclaims.integration.JourneyMapBridge#refreshAll} (das intern zuerst
-     * {@code clearAll} pro Spieler aufruft, siehe dortigen Kommentar) dafür, dass vorhandene
-     * Overlays sofort verschwinden statt bis zum nächsten Server-Neustart hängen zu bleiben.
+     * JourneyMap-Integration (2026-08-16, Architektur 2026-08-17 umgebaut - siehe
+     * {@link com.areaclaims.network.ClaimMapSnapshot}-Klassenkommentar) an/aus. Löst sofort einen
+     * Refresh bei allen Online-Spielern aus, statt auf die nächste Claim-Änderung zu warten -
+     * {@link com.areaclaims.network.ClaimMapSnapshotBuilder#build} liefert beim Abschalten
+     * automatisch eine leere Claim-Liste, wodurch {@code JourneyMapClientBridge#refresh} auf dem
+     * Client vorhandene Overlays sofort entfernt statt bis zum nächsten Neustart hängen zu bleiben.
+     * Kein {@code ModAvailability.isJourneyMapAvailable()}-Guard mehr nötig: der Server selbst
+     * braucht JourneyMap nicht mehr installiert (nur noch der jeweilige Spieler-Client), der Broadcast
+     * an Spieler ohne JourneyMap ist einfach folgenlos.
      */
     public static void setJourneyMapIntegrationEnabled(boolean enabled) {
         FeatureConfigManager.setJourneyMapIntegrationEnabled(enabled);
-        if (ModAvailability.isJourneyMapAvailable()) {
-            if (enabled) {
-                com.areaclaims.integration.JourneyMapBridge.refreshAll();
-            } else {
-                com.areaclaims.integration.JourneyMapBridge.clearAllForEveryone();
-            }
-        }
+        com.areaclaims.network.ClaimMapSnapshotBuilder.sendToAll();
     }
 
     /** Punkt 12 (Nachtrag 3): {@code target} = "block" oder "subclaim", siehe {@link com.areaclaims.network.SetServerConfigPacket}. */
@@ -77,6 +75,8 @@ public final class AdminConfigService {
         switch (target) {
             case "block" -> PriceConfigManager.setPerBlockDivisor(divisor);
             case "subclaim" -> PriceConfigManager.setSubClaimDivisor(divisor);
+            case "block_refund" -> PriceConfigManager.setPerBlockRefundDivisor(divisor);
+            case "subclaim_refund" -> PriceConfigManager.setSubClaimRefundDivisor(divisor);
             default -> {
                 return Result.INVALID_FEATURE;
             }
@@ -147,6 +147,10 @@ public final class AdminConfigService {
             PriceConfigManager.setPerBlockPrice(price);
         } else if ("subclaim".equals(target)) {
             PriceConfigManager.setSubClaimPrice(price);
+        } else if ("block_refund".equals(target)) {
+            PriceConfigManager.setPerBlockRefund(price);
+        } else if ("subclaim_refund".equals(target)) {
+            PriceConfigManager.setSubClaimRefund(price);
         } else {
             RuleType rule = parseRule(target);
             if (rule == null) return Result.INVALID_FEATURE;

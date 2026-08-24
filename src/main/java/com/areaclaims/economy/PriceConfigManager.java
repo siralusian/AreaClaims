@@ -52,6 +52,16 @@ public final class PriceConfigManager {
         /** Punkt 12 (Nachtrag 3): "X pro N Blöcke"-Teiler, siehe {@link PriceCharger#chargeUnits}. 1 = wie bisher (ein Preis pro Block). */
         int perBlockDivisor = 1;
         int subClaimDivisor = 1;
+        /**
+         * Nutzer-Vorgabe (2026-08-18, "Erweitern per Ziehen"): eigene, unabhängig konfigurierbare
+         * Rückerstattung pro verkleinertem Block (Haupt-/Unterbereich getrennt) - IMMER abgerundet
+         * bei einem "pro N Blöcke"-Teiler (siehe {@link PriceCharger#refundUnits}), anders als der
+         * Kauf-Preis, der aufrundet.
+         */
+        PriceDto perBlockRefund = new PriceDto();
+        PriceDto subClaimRefund = new PriceDto();
+        int perBlockRefundDivisor = 1;
+        int subClaimRefundDivisor = 1;
     }
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -60,6 +70,10 @@ public final class PriceConfigManager {
     private static PriceConfig subClaimPrice = PriceConfig.none();
     private static int perBlockDivisor = 1;
     private static int subClaimDivisor = 1;
+    private static PriceConfig perBlockRefund = PriceConfig.none();
+    private static PriceConfig subClaimRefund = PriceConfig.none();
+    private static int perBlockRefundDivisor = 1;
+    private static int subClaimRefundDivisor = 1;
     private static final Map<RuleType, PriceConfig> ruleBuyoutPrices = new EnumMap<>(RuleType.class);
 
     private PriceConfigManager() {}
@@ -103,6 +117,42 @@ public final class PriceConfigManager {
 
     public static void setSubClaimDivisor(int divisor) {
         subClaimDivisor = Math.max(1, divisor);
+        save();
+    }
+
+    public static PriceConfig perBlockRefund() {
+        return perBlockRefund;
+    }
+
+    public static void setPerBlockRefund(PriceConfig price) {
+        perBlockRefund = price.normalized();
+        save();
+    }
+
+    public static PriceConfig subClaimRefund() {
+        return subClaimRefund;
+    }
+
+    public static void setSubClaimRefund(PriceConfig price) {
+        subClaimRefund = price.normalized();
+        save();
+    }
+
+    public static int perBlockRefundDivisor() {
+        return perBlockRefundDivisor;
+    }
+
+    public static void setPerBlockRefundDivisor(int divisor) {
+        perBlockRefundDivisor = Math.max(1, divisor);
+        save();
+    }
+
+    public static int subClaimRefundDivisor() {
+        return subClaimRefundDivisor;
+    }
+
+    public static void setSubClaimRefundDivisor(int divisor) {
+        subClaimRefundDivisor = Math.max(1, divisor);
         save();
     }
 
@@ -163,6 +213,10 @@ public final class PriceConfigManager {
         subClaimPrice = PriceConfig.none();
         perBlockDivisor = 1;
         subClaimDivisor = 1;
+        perBlockRefund = PriceConfig.none();
+        subClaimRefund = PriceConfig.none();
+        perBlockRefundDivisor = 1;
+        subClaimRefundDivisor = 1;
         ruleBuyoutPrices.clear();
         if (dataFile == null || !Files.exists(dataFile)) return;
         try (Reader reader = Files.newBufferedReader(dataFile)) {
@@ -172,6 +226,10 @@ public final class PriceConfigManager {
             subClaimPrice = fromDto(data.subClaim);
             perBlockDivisor = Math.max(1, data.perBlockDivisor);
             subClaimDivisor = Math.max(1, data.subClaimDivisor);
+            perBlockRefund = fromDto(data.perBlockRefund);
+            subClaimRefund = fromDto(data.subClaimRefund);
+            perBlockRefundDivisor = Math.max(1, data.perBlockRefundDivisor);
+            subClaimRefundDivisor = Math.max(1, data.subClaimRefundDivisor);
             if (data.ruleBuyouts != null) {
                 data.ruleBuyouts.forEach((ruleName, dto) -> {
                     try {
@@ -189,6 +247,10 @@ public final class PriceConfigManager {
         data.subClaim = toDto(subClaimPrice);
         data.perBlockDivisor = perBlockDivisor;
         data.subClaimDivisor = subClaimDivisor;
+        data.perBlockRefund = toDto(perBlockRefund);
+        data.subClaimRefund = toDto(subClaimRefund);
+        data.perBlockRefundDivisor = perBlockRefundDivisor;
+        data.subClaimRefundDivisor = subClaimRefundDivisor;
         ruleBuyoutPrices.forEach((rule, price) -> data.ruleBuyouts.put(rule.name(), toDto(price)));
         try (Writer writer = Files.newBufferedWriter(dataFile)) {
             GSON.toJson(data, writer);

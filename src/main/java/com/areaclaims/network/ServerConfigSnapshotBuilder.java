@@ -30,6 +30,10 @@ public final class ServerConfigSnapshotBuilder {
         snapshot.subClaimPrice = toDto(PriceConfigManager.subClaimPrice());
         snapshot.perBlockPriceDivisor = PriceConfigManager.perBlockDivisor();
         snapshot.subClaimPriceDivisor = PriceConfigManager.subClaimDivisor();
+        snapshot.perBlockRefund = toDto(PriceConfigManager.perBlockRefund());
+        snapshot.subClaimRefund = toDto(PriceConfigManager.subClaimRefund());
+        snapshot.perBlockRefundDivisor = PriceConfigManager.perBlockRefundDivisor();
+        snapshot.subClaimRefundDivisor = PriceConfigManager.subClaimRefundDivisor();
         snapshot.wildernessMessageEnabled = FeatureConfigManager.wildernessMessageEnabled();
         snapshot.wildernessMessageText = FeatureConfigManager.wildernessMessageText();
         snapshot.journeyMapAvailable = ModAvailability.isJourneyMapAvailable();

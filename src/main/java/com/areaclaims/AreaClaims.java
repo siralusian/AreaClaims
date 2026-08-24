@@ -108,6 +108,10 @@ public class AreaClaims {
                 ShowcaseGeometrySyncPacket.TYPE,
                 ShowcaseGeometrySyncPacket.CODEC,
                 ShowcaseGeometrySyncPacket::handle)
+            .playToClient(
+                com.areaclaims.network.ClaimMapSyncPacket.TYPE,
+                com.areaclaims.network.ClaimMapSyncPacket.CODEC,
+                com.areaclaims.network.ClaimMapSyncPacket::handle)
             .playToServer(
                 SetShowcaseModePacket.TYPE,
                 SetShowcaseModePacket.CODEC,
@@ -229,7 +233,12 @@ public class AreaClaims {
             .playToServer(
                 com.areaclaims.network.DeleteImagePacket.TYPE,
                 com.areaclaims.network.DeleteImagePacket.CODEC,
-                com.areaclaims.network.DeleteImagePacket::handle);
+                com.areaclaims.network.DeleteImagePacket::handle)
+            // Nutzer-Vorgabe (2026-08-18, "Anpassen"-Block-Einfärbung statt Partikel-Linie).
+            .playToClient(
+                com.areaclaims.network.AdjustPreviewSyncPacket.TYPE,
+                com.areaclaims.network.AdjustPreviewSyncPacket.CODEC,
+                com.areaclaims.network.AdjustPreviewSyncPacket::handle);
     }
 
     private void onRegisterCommands(RegisterCommandsEvent event) {

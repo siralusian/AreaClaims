@@ -98,6 +98,31 @@ public class ClaimManager {
         return result;
     }
 
+    /**
+     * Alle Claims, deren Chunk-Index Teile im gegebenen Block-Rechteck [minX,maxX]x[minZ,maxZ]
+     * berührt (Chunk-Granularität, kein exaktes Polygon-Clipping - ausreichend für eine
+     * Nachbarschafts-Voranzeige, siehe {@code StakingService#sendAdjustPreviewParts}, Nutzer-
+     * Vorgabe 2026-08-19: fremde Claims während "Anpassen" farbig am Boden mit anzeigen).
+     */
+    public static List<Claim> findClaimsNear(String dimension, int minX, int minZ, int maxX, int maxZ) {
+        java.util.Set<UUID> seen = new java.util.LinkedHashSet<>();
+        List<Claim> result = new ArrayList<>();
+        int minChunkX = minX >> 4, maxChunkX = maxX >> 4;
+        int minChunkZ = minZ >> 4, maxChunkZ = maxZ >> 4;
+        for (int cx = minChunkX; cx <= maxChunkX; cx++) {
+            for (int cz = minChunkZ; cz <= maxChunkZ; cz++) {
+                List<UUID> candidates = chunkIndex.get(new ChunkKey(dimension, cx, cz));
+                if (candidates == null) continue;
+                for (UUID id : candidates) {
+                    if (!seen.add(id)) continue;
+                    Claim claim = claimsById.get(id);
+                    if (claim != null) result.add(claim);
+                }
+            }
+        }
+        return result;
+    }
+
     public static Claim findMainClaimAt(String dimension, int x, int z) {
         for (Claim c : findClaimsAt(dimension, x, z)) {
             if (c.isMain()) return c;
@@ -356,7 +381,17 @@ public class ClaimManager {
         if (PolygonUtil.isSelfIntersecting(newPart)) return AddPartResult.SELF_INTERSECTING;
         // Nutzer-Vorgabe (ROADMAP.md Phase 6-Nachtrag "Teile-Obergrenze"): gilt gleich für Haupt-
         // UND Unterbereiche, siehe FeatureConfigManager.Data#maxClaimParts-Kommentar.
-        if (claim.parts().size() >= FeatureConfigManager.maxClaimParts()) return AddPartResult.TOO_MANY_PARTS;
+        //
+        // Bugfix (Nutzer-Fund 2026-08-18): zählte bisher schlicht die Länge von claim.parts() - zwei
+        // Teile, die sich berühren (mindestens ein gemeinsamer Block/eine gemeinsame Kante), sollen
+        // aber als EIN zusammenhängendes Teil zählen. Nur ein Teil OHNE jeden Kontakt zu irgendeinem
+        // anderen Teil ist ein "weiteres" Teil im Sinne der Obergrenze. Bildet dafür die zusammen-
+        // hängenden Gruppen aller Teile (bisherige + der neue) über PolygonUtil#polygonsOverlap, das
+        // laut eigenem Klassenkommentar bewusst auch reine Kantenberührung als "Überlappung" zählt -
+        // exakt die hier gewünschte Berührungs-Definition, kein zusätzlicher Test nötig.
+        List<List<Vertex>> partsAfterAdd = new java.util.ArrayList<>(claim.parts());
+        partsAfterAdd.add(newPart);
+        if (countConnectedPartGroups(partsAfterAdd) > FeatureConfigManager.maxClaimParts()) return AddPartResult.TOO_MANY_PARTS;
         if (!claim.isMain()) {
             Claim parent = claimsById.get(claim.parentId());
             if (parent == null) return AddPartResult.OUTSIDE_PARENT;
@@ -378,6 +413,36 @@ public class ClaimManager {
     }
 
     /**
+     * Anzahl zusammenhängender Gruppen in {@code parts}, wobei zwei Teile als "verbunden" gelten,
+     * wenn sie sich berühren/überschneiden ({@link PolygonUtil#polygonsOverlap}). Einfache
+     * Breitensuche über eine O(n²)-Adjazenzprüfung - für die realistische Teile-Anzahl pro Claim
+     * (Obergrenze per {@code maxClaimParts}, siehe Aufrufer) unproblematisch, gleiche Größenordnung
+     * wie {@link PolygonUtil}s eigene bewusst simple O(n²)-Ansätze.
+     */
+    private static int countConnectedPartGroups(List<List<Vertex>> parts) {
+        int n = parts.size();
+        boolean[] visited = new boolean[n];
+        int groups = 0;
+        for (int i = 0; i < n; i++) {
+            if (visited[i]) continue;
+            groups++;
+            java.util.Deque<Integer> stack = new java.util.ArrayDeque<>();
+            stack.push(i);
+            visited[i] = true;
+            while (!stack.isEmpty()) {
+                int current = stack.pop();
+                for (int j = 0; j < n; j++) {
+                    if (!visited[j] && PolygonUtil.polygonsOverlap(parts.get(current), parts.get(j))) {
+                        visited[j] = true;
+                        stack.push(j);
+                    }
+                }
+            }
+        }
+        return groups;
+    }
+
+    /**
      * Rollback-Hilfe für Preis-Fehlschläge (ROADMAP.md Phase 6): {@code addClaimPart} wird
      * VOR dem eigentlichen Bezahlvorgang aufgerufen (die Fläche des NEUEN Teils muss ja erst
      * feststehen, um den Preis zu berechnen) - reicht die Bezahlung nicht, macht dies den gerade
@@ -387,6 +452,82 @@ public class ClaimManager {
         List<List<Vertex>> parts = claim.parts();
         if (parts.isEmpty()) return;
         parts.remove(parts.size() - 1);
+        rebuildChunkIndex();
+        save();
+    }
+
+    // ---------------------------------------------------------------- Erweitern/Verkleinern per Ziehen (Grenz-Hitbox)
+
+    public enum ResizeResult {
+        OK, NO_CHANGE, TOO_MANY_POINTS, TOO_MANY_PARTS, OVERLAPS_EXISTING, OUTSIDE_PARENT, SUBCLAIM_WOULD_BE_ORPHANED
+    }
+
+    /**
+     * Nutzer-Vorgabe (2026-08-18, "Anpassen"-Button): reine Prüfung OHNE Mutation, ob eine
+     * über {@link com.areaclaims.geometry.PolygonUtil#applyToggleSetToParts} gebaute Kandidaten-
+     * Teile-Liste als NEUE Gesamtgeometrie des Claims übernommen werden dürfte - ersetzt bei Erfolg
+     * die KOMPLETTEN {@code parts} des Claims (nicht nur ein einzelner neuer Teil wie bei {@link
+     * #validateAddPart}), da Ziehen eine bestehende Grenze verschiebt statt ein unabhängiges Stück
+     * hinzuzufügen.
+     *
+     * <p>Zwei Prüfungen, die {@link #validateAddPart} nicht kennt: (1) beim Verkleinern eines
+     * HAUPTbereichs müssen alle seine Unterbereiche weiterhin komplett innerhalb der neuen,
+     * kleineren Fläche liegen - sonst würde ein Unterbereich "herrenlos" im jetzt fremden Territorium
+     * zurückbleiben; (2) die Teile-Zahl der Kandidaten-Liste ist bereits die tatsächliche
+     * zusammenhängende Gruppenzahl (aus {@link com.areaclaims.geometry.PolygonUtil#chainEdgesIntoLoops}
+     * abgeleitet, jede Schleife = ein zusammenhängendes Stück), kein zusätzlicher {@code
+     * countConnectedPartGroups}-Aufruf nötig.
+     */
+    public static ResizeResult validateResize(Claim claim, List<List<Vertex>> candidateParts) {
+        if (candidateParts.isEmpty()) return ResizeResult.NO_CHANGE;
+        for (List<Vertex> part : candidateParts) {
+            if (part.size() > PolygonUtil.MAX_POINTS_PER_PART) return ResizeResult.TOO_MANY_POINTS;
+        }
+        if (candidateParts.size() > FeatureConfigManager.maxClaimParts()) return ResizeResult.TOO_MANY_PARTS;
+
+        if (!claim.isMain()) {
+            Claim parent = claimsById.get(claim.parentId());
+            if (parent == null) return ResizeResult.OUTSIDE_PARENT;
+            for (List<Vertex> part : candidateParts) {
+                boolean containedInAnyParentPart = false;
+                for (List<Vertex> parentPart : parent.parts()) {
+                    if (PolygonUtil.polygonContainsPolygon(parentPart, part)) {
+                        containedInAnyParentPart = true;
+                        break;
+                    }
+                }
+                if (!containedInAnyParentPart) return ResizeResult.OUTSIDE_PARENT;
+            }
+        } else {
+            for (Claim sub : claimsById.values()) {
+                if (sub.isMain() || !claim.id().equals(sub.parentId())) continue;
+                for (List<Vertex> subPart : sub.parts()) {
+                    boolean stillContained = false;
+                    for (List<Vertex> part : candidateParts) {
+                        if (PolygonUtil.polygonContainsPolygon(part, subPart)) {
+                            stillContained = true;
+                            break;
+                        }
+                    }
+                    if (!stillContained) return ResizeResult.SUBCLAIM_WOULD_BE_ORPHANED;
+                }
+            }
+        }
+
+        for (List<Vertex> part : candidateParts) {
+            for (Claim other : claimsById.values()) {
+                if (other.id().equals(claim.id())) continue;
+                if (!other.isMain() || !other.dimension().equals(claim.dimension()) || other.owner().equals(claim.owner())) continue;
+                if (overlapsAnyPart(part, other)) return ResizeResult.OVERLAPS_EXISTING;
+            }
+        }
+        return ResizeResult.OK;
+    }
+
+    /** Ersetzt die KOMPLETTEN Teile des Claims durch {@code newParts} (siehe {@link #validateResize}-Klassenkommentar) - Aufrufer MUSS vorher validiert haben. */
+    public static void applyResize(Claim claim, List<List<Vertex>> newParts) {
+        claim.parts().clear();
+        claim.parts().addAll(newParts);
         rebuildChunkIndex();
         save();
     }
@@ -506,14 +647,14 @@ public class ClaimManager {
             GSON.toJson(data, writer);
         } catch (IOException ignored) {}
 
-        // JourneyMap-Integration (2026-08-16): save() ist der EINE gemeinsame Aufrufpunkt, den
-        // ALLE claim-verändernden Operationen durchlaufen (erstellen, erweitern, löschen, umbenennen,
-        // Farbe/Regeln/Freikauf ändern - siehe die 5 internen + 5 externen save()-Aufrufstellen in
-        // dieser Klasse/ClaimEditService/StakingService/BuyoutService), damit hier genau EIN Hook statt
-        // vieler Einzelstellen ausreicht. Guard rein mit Mod-ID-String-Check VOR jeder Berührung von
-        // JourneyMapBridge (referenziert echte JourneyMap-Typen) - siehe dortigen Klassenkommentar.
-        if (com.areaclaims.integration.ModAvailability.isJourneyMapAvailable()) {
-            com.areaclaims.integration.JourneyMapBridge.refreshAll();
-        }
+        // JourneyMap-Integration (2026-08-16, Architektur 2026-08-17 umgebaut - siehe
+        // com.areaclaims.network.ClaimMapSnapshot-Klassenkommentar): save() ist der EINE gemeinsame
+        // Aufrufpunkt, den ALLE claim-verändernden Operationen durchlaufen (erstellen, erweitern,
+        // löschen, umbenennen, Farbe/Regeln/Freikauf ändern - siehe die 5 internen + 5 externen
+        // save()-Aufrufstellen in dieser Klasse/ClaimEditService/StakingService/BuyoutService), damit
+        // hier genau EIN Hook statt vieler Einzelstellen ausreicht. Kein ModAvailability-Guard mehr
+        // nötig - der Broadcast ist reine Eigennetzwerk-Kommunikation, für Spieler ohne JourneyMap
+        // einfach folgenlos (siehe ClaimMapSnapshotBuilder-Klassenkommentar).
+        com.areaclaims.network.ClaimMapSnapshotBuilder.sendToAll();
     }
 }

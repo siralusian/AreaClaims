@@ -80,6 +80,61 @@ public final class PriceCharger {
         return (b + d - 1) / d;
     }
 
+    /**
+     * Nutzer-Vorgabe (2026-08-18, "Erweitern per Ziehen"): Gegenstück zu {@link #chargeUnits} für
+     * Rückerstattungen - IMMER ABGERUNDET (Nutzer-Zitat: "Hier müssen wir allerdings immer abrunden
+     * wenn der Preis nicht Pro Block ist"), damit ein Admin nicht versehentlich mehr auszahlt, als
+     * die verkleinerte Fläche tatsächlich hergibt. {@code divisor <= 0} wird wie 1 behandelt (dann
+     * ändert Ab-/Aufrunden ohnehin nichts).
+     */
+    public static int refundUnits(int blocks, int divisor) {
+        int d = Math.max(1, divisor);
+        int b = Math.max(0, blocks);
+        return b / d;
+    }
+
+    /**
+     * Gegenstück zu {@link #chargeDetailed} für Rückerstattungen: zahlt ALLE konfigurierten
+     * Komponenten aus (KEINE UND/ODER-Auswertung wie beim Bezahlen - diese Verknüpfung regelt nur,
+     * WELCHE Komponente ein Spieler beim BEZAHLEN alternativ nutzen darf, für eine Auszahlung an den
+     * Spieler ergibt "wähle nur eine aus" keinen Sinn, es wird schlicht alles ausgezahlt, was der
+     * Admin für diese Preis-Zeile hinterlegt hat). Items ohne gültige ID werden übersprungen
+     * (Verteidigung in der Tiefe - die GUI verhindert das schon selbst).
+     *
+     * @return der tatsächlich ausgezahlte CobbleDollars-Betrag (0, falls keine Dollars-Komponente
+     *     konfiguriert ODER CobbleDollars nicht verfügbar ist) - fürs Wallet-Log wie bei {@link ChargeOutcome}.
+     */
+    public static BigInteger refund(ServerPlayer player, PriceConfig price, int multiplier) {
+        int factor = Math.max(1, multiplier);
+        BigInteger dollarsGranted = BigInteger.ZERO;
+        if (price.hasDollars() && ModAvailability.isCobbleDollarsAvailable()) {
+            BigInteger amount = price.dollars().multiply(BigInteger.valueOf(factor));
+            if (amount.signum() > 0) {
+                CobbleCompanionBridge.grant(player, amount);
+                dollarsGranted = amount;
+            }
+        }
+        for (PriceConfig.ItemAmount item : price.items()) {
+            if (!isValidItem(item.itemId())) continue;
+            long amount = (long) item.amount() * factor;
+            if (amount <= 0) continue;
+            giveItems(player, itemOf(item.itemId()), amount);
+        }
+        return dollarsGranted;
+    }
+
+    private static void giveItems(ServerPlayer player, Item item, long amount) {
+        long remaining = amount;
+        while (remaining > 0) {
+            int take = (int) Math.min(remaining, item.getDefaultMaxStackSize());
+            ItemStack stack = new ItemStack(item, take);
+            if (!player.getInventory().add(stack)) {
+                player.drop(stack, false);
+            }
+            remaining -= take;
+        }
+    }
+
     private sealed interface Comp permits Dollars, ItemComp {}
     private record Dollars(BigInteger amount) implements Comp {}
     private record ItemComp(String itemId, int amount) implements Comp {}

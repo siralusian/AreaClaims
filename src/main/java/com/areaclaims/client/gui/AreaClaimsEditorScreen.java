@@ -491,7 +491,8 @@ public class AreaClaimsEditorScreen extends FixedScaleScreen {
     // ---------------------------------------------------------------- Spalte 1: Hauptbereiche
 
     private void buildMainColumn() {
-        int expandWidth = Math.min(COL1_WIDTH, measuredButtonWidth("areaclaims.editor.expand"));
+        int expandWidth = measuredButtonWidth("areaclaims.editor.expand");
+        int adjustWidth = measuredButtonWidth("areaclaims.editor.adjust");
         int y = COL1_Y;
         for (ClaimEditorSnapshot.ClaimEntry claim : mainClaims()) {
             boolean selected = claim.id.equals(selectedMainId);
@@ -515,6 +516,14 @@ public class AreaClaimsEditorScreen extends FixedScaleScreen {
                 addRenderableWidget(Button.builder(Component.translatable("areaclaims.editor.expand"),
                         b -> sendBeginSelection(ActiveSelectionManager.ActionType.EXPAND_MAIN, claim.id))
                     .bounds(COL1_X, expandY, expandWidth, MAIN_ROW_EXPAND_HEIGHT)
+                    .build());
+                // Nutzer-Vorgabe (2026-08-18): "Anpassen" NEBEN "Erweitern" statt eines Gedrückt-
+                // Halten-Ziehens an der Grenze - eigener Modus, siehe ActiveSelectionManager.ActionType#ADJUST_MAIN.
+                // Nutzer-Vorgabe (2026-08-19): bündig an "Erweitern" statt mit dem üblichen
+                // ROW_BUTTON_GAP - dichter beieinander, da beide zur selben Aktion gehören.
+                addRenderableWidget(Button.builder(Component.translatable("areaclaims.editor.adjust"),
+                        b -> sendBeginSelection(ActiveSelectionManager.ActionType.ADJUST_MAIN, claim.id))
+                    .bounds(COL1_X + expandWidth, expandY, adjustWidth, MAIN_ROW_EXPAND_HEIGHT)
                     .build());
             }
 
@@ -571,7 +580,8 @@ public class AreaClaimsEditorScreen extends FixedScaleScreen {
 
     private void buildSubColumn() {
         if (selectedMainId == null) return;
-        int expandWidth = Math.min(COL2_WIDTH, measuredButtonWidth("areaclaims.editor.expand"));
+        int expandWidth = measuredButtonWidth("areaclaims.editor.expand");
+        int adjustWidth = measuredButtonWidth("areaclaims.editor.adjust");
         List<ClaimEditorSnapshot.ClaimEntry> subs = subClaimsOf(selectedMainId);
         int y = col2Y();
         for (ClaimEditorSnapshot.ClaimEntry sub : subs) {
@@ -593,6 +603,10 @@ public class AreaClaimsEditorScreen extends FixedScaleScreen {
                 addRenderableWidget(Button.builder(Component.translatable("areaclaims.editor.expand"),
                         b -> sendBeginSelection(ActiveSelectionManager.ActionType.EXPAND_SUB, sub.id))
                     .bounds(COL2_X, expandY, expandWidth, SUB_ROW_EXPAND_HEIGHT)
+                    .build());
+                addRenderableWidget(Button.builder(Component.translatable("areaclaims.editor.adjust"),
+                        b -> sendBeginSelection(ActiveSelectionManager.ActionType.ADJUST_SUB, sub.id))
+                    .bounds(COL2_X + expandWidth, expandY, adjustWidth, SUB_ROW_EXPAND_HEIGHT)
                     .build());
             }
 
@@ -764,7 +778,11 @@ public class AreaClaimsEditorScreen extends FixedScaleScreen {
                         b -> openBuyoutConfirm(claim.id, rule.rule))
                     .bounds(roleColumnX, rowY, roleWidth, RULE_ROW_HEIGHT - 2)
                     .build());
-            } else {
+            } else if (!"MOB_SPAWNING".equals(rule.rule)) {
+                // Nutzer-Vorgabe (2026-08-18): MOB_SPAWNING hat keinen handelnden Spieler (siehe
+                // ClaimProtectionManager#isRuleActive/-checkClaimRule - der rollenbasierte Ignorieren-
+                // Mechanismus wird für diese Regel nie konsultiert, feindliche Mobs stehen nie in der
+                // Mitgliederliste), der Rollen-Button hätte also ohnehin nie eine Wirkung.
                 addRenderableWidget(Button.builder(minRole.translatable(), b -> {
                         ClaimRole next = cycleRole(minRole);
                         sendSetRule(claim.id, rule.rule, enabled, next);
@@ -1486,11 +1504,42 @@ public class AreaClaimsEditorScreen extends FixedScaleScreen {
         int x = (this.width - width) / 2;
         int y = (this.height - height) / 2;
 
+        boolean isAdjust = "ADJUST_MAIN".equals(confirm.action) || "ADJUST_SUB".equals(confirm.action);
+        if (isAdjust) {
+            renderAdjustConfirmOverlay(graphics, confirm, x, y, width);
+            return;
+        }
+
         graphics.drawCenteredString(this.font, Component.translatable("areaclaims.confirm.title"), x + width / 2, y + 10, TEXT_COLOR);
         graphics.drawCenteredString(this.font, Component.translatable("areaclaims.confirm.blocks", confirm.blocks), x + width / 2, y + 26, MUTED_TEXT_COLOR);
         graphics.drawCenteredString(this.font, describePrice(confirm.price), x + width / 2, y + 42, TEXT_COLOR);
         if (!confirm.affordable) {
             graphics.drawCenteredString(this.font, Component.translatable("areaclaims.confirm.cannot_afford"), x + width / 2, y + 58, RED);
+        }
+    }
+
+    /**
+     * Nutzer-Vorgabe (2026-08-18, "Anpassen"-Button): eine Anpassen-Sitzung kann GLEICHZEITIG
+     * Blöcke hinzufügen (Preis) UND entfernen (Rückerstattung) - zeigt darum bis zu zwei Zeilen
+     * statt der einzelnen Preis-Zeile des normalen Preisbestätigung-Popups.
+     */
+    private void renderAdjustConfirmOverlay(GuiGraphics graphics, PriceConfirmSnapshot confirm, int x, int y, int width) {
+        graphics.drawCenteredString(this.font, Component.translatable("areaclaims.confirm.adjust_title"), x + width / 2, y + 10, TEXT_COLOR);
+        int line = y + 26;
+        if (confirm.addedBlocks > 0) {
+            graphics.drawCenteredString(this.font, Component.translatable("areaclaims.confirm.adjust_added", confirm.addedBlocks), x + width / 2, line, MUTED_TEXT_COLOR);
+            line += 10;
+            graphics.drawCenteredString(this.font, describePrice(confirm.addedPrice), x + width / 2, line, TEXT_COLOR);
+            line += 12;
+        }
+        if (confirm.removedBlocks > 0) {
+            graphics.drawCenteredString(this.font, Component.translatable("areaclaims.confirm.adjust_removed", confirm.removedBlocks), x + width / 2, line, MUTED_TEXT_COLOR);
+            line += 10;
+            graphics.drawCenteredString(this.font, describePrice(confirm.removedPrice), x + width / 2, line, TEXT_COLOR);
+            line += 12;
+        }
+        if (!confirm.affordable) {
+            graphics.drawCenteredString(this.font, Component.translatable("areaclaims.confirm.cannot_afford"), x + width / 2, line, RED);
         }
     }
 

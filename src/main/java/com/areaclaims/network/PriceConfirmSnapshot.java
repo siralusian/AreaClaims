@@ -17,4 +17,15 @@ public class PriceConfirmSnapshot {
     public int blocks;
     /** Ob der Preis mit dem AKTUELLEN Inventar/Guthaben des Spielers gerade bezahlbar wäre - steuert, ob "Bestätigen" ausgegraut ist. */
     public boolean affordable;
+    /**
+     * Nutzer-Vorgabe (2026-08-18, "Anpassen"-Button): NUR bei {@code ADJUST_MAIN}/{@code
+     * ADJUST_SUB} befüllt (statt {@link #blocks}/{@link #price}) - eine Anpassen-Sitzung kann in
+     * derselben Bestätigung SOWOHL Blöcke hinzufügen ALS AUCH entfernen, braucht also beide Beträge
+     * gleichzeitig statt eines einzelnen Preis-/Rückerstattung-Felds (siehe
+     * {@code AreaClaimsEditorScreen#renderPriceConfirmOverlay}).
+     */
+    public int addedBlocks;
+    public ServerConfigSnapshot.PriceEntry addedPrice;
+    public int removedBlocks;
+    public ServerConfigSnapshot.PriceEntry removedPrice;
 }

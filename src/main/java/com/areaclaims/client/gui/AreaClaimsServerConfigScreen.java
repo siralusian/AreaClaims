@@ -178,6 +178,13 @@ public class AreaClaimsServerConfigScreen extends FixedScaleScreen {
         // Punkt 11 (Nachtrag 3): eigene, unabhängig konfigurierbare Preiszeile NUR für Unterbereiche -
         // gleiche Zeilenform wie "Claim Preis" (siehe Klassenkommentar "Punkt 6"), inkl. eigenem Teiler.
         y = buildPriceRowComponent("subclaim", Component.translatable("areaclaims.serverconfig.price_subclaim"), snapshot.subClaimPrice, y, snapshot.subClaimPriceDivisor);
+        y += 2;
+        // Nutzer-Vorgabe (2026-08-18, "Erweitern per Ziehen"): eigene Rückerstattungssätze pro
+        // verkleinertem Block, Haupt-/Unterbereich getrennt - gleiche Zeilenform wie die Kauf-Preise
+        // (Wiederverwendung von buildPriceRowComponent/buildDivisorRow, siehe dortige Kommentare).
+        y = buildPriceRowComponent("block_refund", Component.translatable("areaclaims.serverconfig.price_block_refund"), snapshot.perBlockRefund, y, snapshot.perBlockRefundDivisor);
+        y += 2;
+        y = buildPriceRowComponent("subclaim_refund", Component.translatable("areaclaims.serverconfig.price_subclaim_refund"), snapshot.subClaimRefund, y, snapshot.subClaimRefundDivisor);
 
         for (ServerConfigSnapshot.RuleBuyoutPriceEntry entry : snapshot.ruleBuyoutPrices) {
             y += 2;

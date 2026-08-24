@@ -1,13 +1,18 @@
 package com.areaclaims.event;
 
+import com.areaclaims.claim.Claim;
 import com.areaclaims.claim.ClaimProtectionManager;
 import com.areaclaims.claim.RuleType;
+import com.areaclaims.geometry.PolygonUtil;
+import com.areaclaims.geometry.Vertex;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
@@ -22,6 +27,9 @@ import net.neoforged.neoforge.event.entity.living.FinalizeSpawnEvent;
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
+
+import java.util.List;
 
 /**
  * Verdrahtet die {@link RuleType}-Regeln gegen tatsächlich verifizierte NeoForge-Events (jede
@@ -97,17 +105,105 @@ public class ClaimProtectionListener {
         }
     }
 
-    // ---------------------------------------------------------------- MOB_SPAWNING
+    // ---------------------------------------------------------------- MOB_SPAWNING ("Feindliche Mobs")
     // Kein handelnder Spieler -> nutzt ClaimProtectionManager#isRuleActive statt #isAllowed.
-    // Bewusst simpel gehalten (siehe RuleType-Kommentar / ROADMAP.md): blockt ALLE Mob-Spawns im
-    // Claim, wenn die Regel aktiv ist, unterscheidet (noch) nicht friedlich/feindlich.
+    // Nutzer-Vorgabe (2026-08-18, Regel umbenannt/eingeschränkt): nur noch FEINDLICH gesinnte Mobs
+    // werden geblockt (MobCategory.MONSTER - dieselbe Klassifizierung, die Vanilla selbst für
+    // Schwierigkeitsgrad/Spawn-Limits nutzt, funktioniert automatisch auch für modifizierte
+    // feindliche Mobs, solange sie sich korrekt als MONSTER registrieren). Friedliche/neutrale
+    // Mobs (Kühe, Dorfbewohner, Wölfe, Cobblemon-Pokémon usw.) dürfen weiterhin normal spawnen.
 
     @SubscribeEvent
     public void onFinalizeSpawn(FinalizeSpawnEvent event) {
         if (!(event.getLevel() instanceof ServerLevel level)) return;
+        Mob mob = event.getEntity();
+        if (mob.getType().getCategory() != MobCategory.MONSTER) return;
         String dimension = level.dimension().location().toString();
         if (ClaimProtectionManager.isRuleActive(dimension, (int) Math.floor(event.getX()), (int) Math.floor(event.getZ()), RuleType.MOB_SPAWNING)) {
             event.setSpawnCancelled(true);
+        }
+    }
+
+    // ---------------------------------------------------------------- MOB_SPAWNING: bereits vorhandene feindliche Mobs zurückdrängen
+    // Nutzer-Vorgabe (2026-08-18): das Spawn-Verbot oben verhindert nur NEUES Entstehen IM Claim -
+    // ein Mob, der außerhalb spawnt und in den Claim hineinläuft, wird davon nicht erfasst. Prüft
+    // deshalb periodisch (gleiche Kadenz wie ClaimEntryListener) ALLE geladenen feindlichen Mobs
+    // und teleportiert sie zurück nach draußen, sobald sie sich in einem Claim mit aktiver Regel
+    // befinden ("laufen gegen eine unsichtbare Wand", feste Wahl statt konfigurierbarem
+    // Töten-Modus, siehe Nutzer-Entscheidung).
+
+    private static final int MOB_PUSHBACK_INTERVAL_TICKS = 10;
+    private static final int MOB_PUSHBACK_MAX_STEPS = 200;
+
+    private int mobPushbackTickCounter = 0;
+
+    @SubscribeEvent
+    public void onServerTickPushHostileMobs(ServerTickEvent.Post event) {
+        mobPushbackTickCounter++;
+        if (mobPushbackTickCounter % MOB_PUSHBACK_INTERVAL_TICKS != 0) return;
+
+        for (ServerLevel level : event.getServer().getAllLevels()) {
+            String dimension = level.dimension().location().toString();
+            for (Entity entity : level.getAllEntities()) {
+                if (!(entity instanceof Mob mob)) continue;
+                if (mob.getType().getCategory() != MobCategory.MONSTER) continue;
+
+                Claim claim = ClaimProtectionManager.resolveActiveRuleClaim(
+                    dimension, mob.getBlockX(), mob.getBlockZ(), RuleType.MOB_SPAWNING);
+                if (claim != null) pushHostileMobOutside(mob, claim);
+            }
+        }
+    }
+
+    /**
+     * Sucht den konkreten Claim-TEIL, in dem der Mob gerade steht, bildet dessen (groben)
+     * Flächenschwerpunkt und schiebt den Mob radial vom Schwerpunkt weg, in Schritten von 1 Block,
+     * bis er außerhalb des Teils liegt (plus 1 Block Sicherheitsabstand). Funktioniert unabhängig
+     * von der Polygonform (kein exaktes "nächster Punkt außerhalb" nötig, siehe PolygonUtil-
+     * Klassenkommentar) - bei sehr großen/entarteten Claims (kein Ausstieg innerhalb
+     * MOB_PUSHBACK_MAX_STEPS gefunden) wird bewusst NICHTS getan statt an eine falsche Position zu
+     * teleportieren. Y bleibt unverändert (Claims sind reine XZ-Grundrisse, siehe Claim-
+     * Klassenkommentar) - kein Höhenkarten-Nachschlagen nötig.
+     */
+    private void pushHostileMobOutside(Mob mob, Claim claim) {
+        double mobX = mob.getX();
+        double mobZ = mob.getZ();
+
+        List<Vertex> part = null;
+        for (List<Vertex> candidate : claim.parts()) {
+            if (PolygonUtil.pointInPolygon(candidate, mobX, mobZ)) {
+                part = candidate;
+                break;
+            }
+        }
+        if (part == null || part.isEmpty()) return;
+
+        double centerX = 0.0, centerZ = 0.0;
+        for (Vertex v : part) {
+            centerX += v.x();
+            centerZ += v.z();
+        }
+        centerX /= part.size();
+        centerZ /= part.size();
+
+        double dirX = mobX - centerX;
+        double dirZ = mobZ - centerZ;
+        double len = Math.sqrt(dirX * dirX + dirZ * dirZ);
+        if (len < 1e-6) {
+            dirX = 1.0;
+            dirZ = 0.0;
+        } else {
+            dirX /= len;
+            dirZ /= len;
+        }
+
+        for (int step = 1; step <= MOB_PUSHBACK_MAX_STEPS; step++) {
+            double candidateX = mobX + dirX * step;
+            double candidateZ = mobZ + dirZ * step;
+            if (!PolygonUtil.pointInPolygon(part, candidateX, candidateZ)) {
+                mob.teleportTo(candidateX + dirX, mob.getY(), candidateZ + dirZ);
+                return;
+            }
         }
     }
 
