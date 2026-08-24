@@ -16,12 +16,16 @@ mod, works in any NeoForge modpack.
   parts under one name.
 - **Main claims + sub-claims** — a main claim (e.g. a city) can contain nested sub-claims
   (e.g. districts/plots), each independently configurable.
+- **Block-by-block boundary adjustment** — the "Adjust" button (next to "Expand") lets you toggle
+  individual blocks in/out of an existing claim part with a live color preview; added blocks cost
+  the normal price, removed blocks are refunded at an admin-configured rate.
 - **Member roles** — Member / Staff / Co-Owner, each deny-rule individually gated by a minimum
   role that bypasses it.
-- **Deny-rules**, each toggleable per claim: building/mining, container access, PvP, mob
-  spawning, redstone interaction, vehicle use/placement, item dropping, fluid placement, farmland
-  trampling, leashing passive mobs, and (if [Cobblemon](https://modrinth.com/mod/cobblemon) is
-  installed) preventing Pokémon capture inside the claim.
+- **Deny-rules**, each toggleable per claim: building/mining, container access, PvP, hostile mob
+  spawning (hostile mobs that end up inside anyway get auto-teleported back out), redstone
+  interaction, vehicle use/placement, item dropping, fluid placement, farmland trampling, leashing
+  passive mobs, and (if [Cobblemon](https://modrinth.com/mod/cobblemon) is installed) preventing
+  Pokémon capture inside the claim.
 - **Entry title/subtitle** like a place sign when crossing a border, plus an optional welcome
   message — fully customizable per viewer (position, duration or permanent display, color, font
   style, scale) via a dedicated preferences screen, not just the claim owner's choice.
@@ -83,10 +87,15 @@ NeoForge-Modpack.
   beschränkt. Ein Claim kann aus mehreren getrennten Teilen unter einem Namen bestehen.
 - **Hauptbereiche + Unterbereiche** — ein Hauptbereich (z. B. eine Stadt) kann verschachtelte
   Unterbereiche (z. B. Grundstücke) enthalten, jeder einzeln konfigurierbar.
+- **Block-genaue Grenzanpassung** — der "Anpassen"-Button (neben "Erweitern") lässt einzelne
+  Blöcke eines bestehenden Claim-Teils per Klick ein-/ausschalten, mit Live-Farbvorschau;
+  hinzugefügte Blöcke kosten den normalen Preis, entfernte werden zu einem vom Admin festgelegten
+  Satz zurückerstattet.
 - **Mitgliederrollen** — Mitglied / Mitarbeiter / Mitbesitzer, jede Verbieten-Regel einzeln mit
   einer Mindestrolle koppelbar, die sie umgeht.
 - **Verbieten-Regeln**, jede einzeln pro Claim umschaltbar: Bauen/Abbauen, Truhenzugriff, PvP,
-  Mob-Spawning, Redstone-Interaktion, Fahrzeugnutzung/-platzierung, Item-Drop, Flüssigkeiten
+  feindliche Mobs (Feinde, die trotzdem hineingelangen, werden automatisch zurück nach draußen
+  teleportiert), Redstone-Interaktion, Fahrzeugnutzung/-platzierung, Item-Drop, Flüssigkeiten
   platzieren, Ackerland zertrampeln, Anleinen zahmer Tiere, sowie (falls
   [Cobblemon](https://modrinth.com/mod/cobblemon) installiert ist) Pokémon-Fang im Claim
   verhindern.
