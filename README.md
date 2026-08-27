@@ -6,8 +6,7 @@
 
 AreaClaims lets players and server owners define block-precise, freely-shaped **polygon** land
 claims — not just simple rectangles. A main claim can contain any number of independent
-sub-claims, each with its own name, entry title, member roles, and deny-rules. Standalone NeoForge
-mod, works in any NeoForge modpack.
+sub-claims, each with its own name, entry title or image, member roles, and deny-rules.
 
 ### Features
 
@@ -17,8 +16,7 @@ mod, works in any NeoForge modpack.
 - **Main claims + sub-claims** — a main claim (e.g. a city) can contain nested sub-claims
   (e.g. districts/plots), each independently configurable.
 - **Block-by-block boundary adjustment** — the "Adjust" button (next to "Expand") lets you toggle
-  individual blocks in/out of an existing claim part with a live color preview; added blocks cost
-  the normal price, removed blocks are refunded at an admin-configured rate.
+  individual blocks in/out of an existing claim part with a live color preview.
 - **Member roles** — Member / Staff / Co-Owner, each deny-rule individually gated by a minimum
   role that bypasses it.
 - **Deny-rules**, each toggleable per claim: building/mining, container access, PvP, hostile mob
@@ -47,28 +45,36 @@ mod, works in any NeoForge modpack.
   feature-unlock OP-level thresholds, prices, and the maximum number of claim parts, all through
   a dedicated server-config screen.
 
-### Building
+### Dependencies
 
-No third-party mod dependencies required to run — this mod is fully standalone. Optional soft
-dependencies (CobbleCompanion, Cobblemon, JourneyMap) are detected at runtime and simply enable
-extra features when present; nothing is required in `libs/` unless you're compiling against them
-yourself.
+No mods are required to use AreaClaims.
 
-### Other CobbleCompanion-family projects
+Optional mods for extra features:
+- [Cobblemon](https://modrinth.com/mod/cobblemon)
+- [JourneyMap](https://modrinth.com/mod/journeymap)
+- [CobbleCompanion](https://curseforge.com/minecraft/mc-mods/cobblecompanion-all-in-one) +
+  [CobbleDollars](https://modrinth.com/mod/cobbledollars)
 
-AreaClaims isn't part of the CobbleCompanion family, but it's made by the same author:
+### Check out my other projects too
 
-- [CobbleCompanion](https://github.com/siralusian/CobbleCompanion) and its extensions/bundles
-- [MobTweaks](https://github.com/siralusian/MobTweaks) — granular per-ability mob/NPC behavior
-  control, loot and spawn overrides.
-- [InvSpy](https://github.com/siralusian/InvSpy) — lets admins open online/offline players'
-  inventory and enderchest like a chest.
-- [CreativeMenu](https://github.com/siralusian/CreativeMenu) — makes the Creative inventory menu
-  freely customizable.
-- [CopycatSign](https://github.com/siralusian/CopycatSign) — a Copycat block that displays a
-  custom picture.
-- [Create: Let's Do Automation](https://github.com/siralusian/CreateLetsDo) — automates Let's Do:
-  Farm & Charm blocks with Create.
+- [Area Claims](https://curseforge.com/minecraft/mc-mods/area-claims) — Lets players claim their
+  own area on your server.
+- [CobbleCompanion](https://curseforge.com/minecraft/mc-mods/cobblecompanion-all-in-one) —
+  companion tool for the Cobblemon mod.
+- [Create: Let's Do Automation](https://curseforge.com/minecraft/mc-mods/create-let-s-do) — lets
+  you automatically fill Let's Do work blocks using Create.
+- [CreativeMenu](https://curseforge.com/minecraft/mc-mods/creative-menu) — freely design your
+  Creative menu the way you want. Fully configurable in-game.
+- [CopycatSign](https://curseforge.com/minecraft/mc-mods/create-copycat-sign) — hang pictures on
+  your walls, Create trains, airships and more, with freely choosable border and back textures.
+- [Item Creator](https://curseforge.com/minecraft/mc-mods/itemcreator) — create items with
+  enchantments and more, entirely without /give commands.
+- [InvSpy](https://curseforge.com/minecraft/mc-mods/invspy) — powerful tool for server admins.
+  Check which player used a chest, or what your players are carrying in their inventory.
+- [MobTweaks](https://curseforge.com/minecraft/mc-mods/mobtweak) — tool for server admins. Control
+  which mobs may spawn where, adjust loot, or prevent world damage from Creepers, Endermen and co.
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/C3W0229LCP)
 
 ---
 
@@ -76,9 +82,8 @@ AreaClaims isn't part of the CobbleCompanion family, but it's made by the same a
 
 AreaClaims erlaubt Spielern und Server-Betreibern, blockgenaue, **frei geformte Polygon**-
 Gebietsansprüche zu definieren — nicht nur einfache Rechtecke. Ein Hauptbereich kann beliebig
-viele unabhängige Unterbereiche enthalten, jeder mit eigenem Namen, Betreten-Titel,
-Mitgliederrollen und Verbieten-Regeln. Eigenständige NeoForge-Mod, funktioniert in jedem
-NeoForge-Modpack.
+viele unabhängige Unterbereiche enthalten, jeder mit eigenem Namen, Betreten-Titel oder Bild,
+Mitgliederrollen und Regeln.
 
 ### Funktionen
 
@@ -88,9 +93,7 @@ NeoForge-Modpack.
 - **Hauptbereiche + Unterbereiche** — ein Hauptbereich (z. B. eine Stadt) kann verschachtelte
   Unterbereiche (z. B. Grundstücke) enthalten, jeder einzeln konfigurierbar.
 - **Block-genaue Grenzanpassung** — der "Anpassen"-Button (neben "Erweitern") lässt einzelne
-  Blöcke eines bestehenden Claim-Teils per Klick ein-/ausschalten, mit Live-Farbvorschau;
-  hinzugefügte Blöcke kosten den normalen Preis, entfernte werden zu einem vom Admin festgelegten
-  Satz zurückerstattet.
+  Blöcke eines bestehenden Claim-Teils per Klick ein-/ausschalten, mit Live-Farbvorschau.
 - **Mitgliederrollen** — Mitglied / Mitarbeiter / Mitbesitzer, jede Verbieten-Regel einzeln mit
   einer Mindestrolle koppelbar, die sie umgeht.
 - **Verbieten-Regeln**, jede einzeln pro Claim umschaltbar: Bauen/Abbauen, Truhenzugriff, PvP,
@@ -123,9 +126,24 @@ NeoForge-Modpack.
   sowie Freischaltungsschwellen, Preise und die maximale Teile-Anzahl pro Claim über einen
   eigenen Server-Konfigurations-Screen einstellen.
 
-### Bauen
+### Abhängigkeiten
 
-Keine Fremd-Mod-Abhängigkeiten zum Ausführen nötig — diese Mod ist komplett eigenständig.
-Optionale weiche Abhängigkeiten (CobbleCompanion, Cobblemon, JourneyMap) werden zur Laufzeit
-erkannt und schalten bei Vorhandensein einfach zusätzliche Funktionen frei; in `libs/` wird
-nichts benötigt, außer man kompiliert selbst dagegen.
+Es werden keine Mods für die Nutzung von Area Claims benötigt.
+
+Optional:
+- [Cobblemon](https://modrinth.com/mod/cobblemon)
+- [JourneyMap](https://modrinth.com/mod/journeymap)
+- [CobbleCompanion](https://curseforge.com/minecraft/mc-mods/cobblecompanion-all-in-one) + [CobbleDollars](https://modrinth.com/mod/cobbledollars)
+
+### Sieh dir auch meine anderen Projekte an
+
+- [Area Claims](https://curseforge.com/minecraft/mc-mods/area-claims) — Erlaube es Spielern ihren eigenen Bereich auf deinem Server zu beanspruchen.
+- [CobbleCompanion](https://curseforge.com/minecraft/mc-mods/cobblecompanion-all-in-one) Hilfstool für die Cobblemon Mod
+- [Create: Let's Do Automation](https://curseforge.com/minecraft/mc-mods/create-let-s-do) — Ermöglicht das automatische Befüllen von Let's Do Arbeitsblöcken mithilfe von Create.
+- [CreativeMenu](https://curseforge.com/minecraft/mc-mods/creative-menu) — Gestalte dein Creative Menü frei nach deinen Wünschen. Alles ingame einstellbar.
+- [CopycatSign](https://curseforge.com/minecraft/mc-mods/create-copycat-sign) — Hänge Bilder an deine Wände, Züge, Luftschiffe und Co mit frei wählbaren Rand- und Rückseiten-Texturen.
+- [Item Creator](https://curseforge.com/minecraft/mc-mods/itemcreator) — Erzeuge Items mit Verzauberungen und Co ganz ohne /give Commands
+- [InvSpy](https://curseforge.com/minecraft/mc-mods/invspy) — Starkes Tool für Server-Betreiber. Prüfe welcher Spieler sich an einer Truhe bedient hat oder was deine Spieler im Inventar haben.
+- [MobTweaks](https://curseforge.com/minecraft/mc-mods/mobtweak) — Tool für Server-Betreiber. Steuere welche Mobs wo spawnen dürfen, passe den Loot an oder verhindere Schaden in der Welt durch Creeper, Enderman und co.
+
+*AI-generated content: this mod was developed with AI assistance (Claude). / KI-generierte Inhalte: Diese Mod wurde mit KI-Unterstützung (Claude) entwickelt.*
